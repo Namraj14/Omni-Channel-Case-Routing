@@ -1,5 +1,7 @@
 ## Routing Configuration Explained
 
+### Note: Here we select the priority of the work, routing model and the capacity of each work item
+
 A Routing Configuration controls how Omni-Channel distributes work items to agents. It acts as the decision-making engine between a Queue and an Agent.
 
 ### Relationship in the Routing Flow
