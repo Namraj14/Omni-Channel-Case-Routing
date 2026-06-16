@@ -1,6 +1,11 @@
 # Salesforce Omni-Channel Case Routing
 ### Note: Routing configuration is regarding the work items(what will be there size and the priority and the model), presence configuration is about the agents (How much is there capacity), presence status (indicate when they’re online and available to receive work items from a specific service channel, or whether they’re away or offline.) service channel (selecting the objects : Route work from a Salesforce object, such as cases, chats, leads, or even custom objects, to support agents.) Queues (here we select the routing configuration because work items are present) 
 
+Service Channel      = What can be routed?
+Queue                = Where does work wait?
+Routing Configuration = How is work distributed?
+Presence Status      = Who can receive work?
+Presence Configuration = How much work can they receive?
 ## Overview
 
 This project demonstrates how Salesforce Service Cloud automatically routes Cases to the correct support agents using:
