@@ -1,25 +1,33 @@
-# Omni-Channel-Case-Routing
-Salesforce Service Cloud implementation demonstrating automated Case Assignment Rules, Queue-based routing, and Omni-Channel work distribution to support agents.
-
-
 # Salesforce Omni-Channel Case Routing
 
 ## Overview
 
-This project demonstrates automated Case Routing in Salesforce Service Cloud using Omni-Channel. The solution automatically assigns Cases to the appropriate Queue based on business rules and delivers them in real-time to available support agents.
+This project demonstrates how Salesforce Service Cloud automatically routes Cases to the correct support agents using:
 
-## Business Scenario
+- Case Assignment Rules
+- Queues
+- Omni-Channel
+- Service Channels
+- Routing Configurations
+- Presence Statuses
+- Presence Configurations
 
-A customer submits a support Case.
-
-- If the Issue Category is **Bug**, the Case is routed to the **Engineering Escalations** queue.
-- All other Cases are routed to the **Tier 1 Support** queue.
-
-Once the Case reaches the queue, Omni-Channel identifies an available agent and pushes the Case directly to them for immediate action.
+The goal is to eliminate manual case assignment and ensure support requests are delivered to the right agent in real time.
 
 ---
 
-## Solution Architecture
+# Business Scenario
+
+When a customer creates a Case:
+
+- If `Issue_Category__c = Bug`, the Case should be routed to the **Engineering Escalations** queue.
+- All other Cases should be routed to the **Tier 1 Support** queue.
+
+Once the Case reaches the appropriate queue, Omni-Channel identifies an available agent and pushes the Case directly to them.
+
+---
+
+# Architecture
 
 ```text
 Customer Creates Case
@@ -27,202 +35,110 @@ Customer Creates Case
         ▼
 Case Assignment Rule
         │
-        ├── Issue Category = Bug
-        │           │
-        │           ▼
-        │  Engineering Escalations Queue
+        ├── Bug
+        │      ▼
+        │ Engineering Escalations Queue
         │
-        └── All Other Cases
-                    │
-                    ▼
-             Tier 1 Support Queue
-                    │
-                    ▼
-             Omni-Channel Routing
-                    │
-                    ▼
-             Available Agent
-                    │
-                    ▼
-              Accept Work
-                    │
-                    ▼
-              Case Opens
+        └── Other Issues
+               ▼
+          Tier 1 Support Queue
+               │
+               ▼
+       Routing Configuration
+               │
+               ▼
+          Omni-Channel
+               │
+               ▼
+       Available Agent
+               │
+               ▼
+          Accept Work
+               │
+               ▼
+           Case Opens
 ```
 
 ---
 
-# Components
+# How Components Are Connected
 
-## 1. Omni-Channel
-
-### Purpose
-
-Omni-Channel is Salesforce's workload distribution engine. It automatically routes work items such as Cases to available agents.
-
-### Why It Is Needed
-
-Without Omni-Channel:
-
-```text
-Case → Queue
-```
-
-Agents must manually monitor queues and pick work.
-
-With Omni-Channel:
-
-```text
-Case → Queue → Agent
-```
-
-Salesforce automatically delivers work to the appropriate agent.
-
----
-
-## 2. Service Channel
+## 1. Case Assignment Rule → Queue
 
 ### Purpose
 
-A Service Channel tells Omni-Channel which Salesforce object can be routed.
+Determines where a Case should be routed.
 
 ### Example
 
 ```text
-Object: Case
+Issue_Category__c = Bug
 ```
 
-This tells Salesforce that Cases are eligible for Omni-Channel routing.
+Assign To:
 
-### Configuration
+```text
+Engineering Escalations Queue
+```
 
-| Field | Value |
-|---------|---------|
-| Service Channel Name | Cases |
-| Salesforce Object | Case |
+### What Happens
 
-### Why It Is Required
+When a Bug Case is created:
 
-Without a Service Channel, Omni-Channel does not recognize Cases as routeable work items.
+```text
+Case
+  ↓
+Assignment Rule
+  ↓
+Engineering Escalations Queue
+```
+
+The Queue becomes the Case Owner.
 
 ---
 
-## 3. Presence Configuration
+## 2. Queue → Routing Configuration
 
 ### Purpose
 
-Defines agent workload capacity.
-
-### Example
-
-An agent can handle:
-
-```text
-10 Capacity Units
-```
-
-Each Case consumes:
-
-```text
-1 Capacity Unit
-```
-
-The agent can therefore work on up to 10 Cases simultaneously.
+Tells Salesforce how work should be distributed once it reaches the queue.
 
 ### Configuration
 
-| Field | Value |
-|---------|---------|
-| Name | Support Agents |
-| Capacity | 10 |
-| Routing Model | Most Available |
-
-### Why It Is Required
-
-Prevents agents from being overloaded and helps Salesforce distribute work efficiently.
-
----
-
-## 4. Presence Status
-
-### Purpose
-
-Determines whether an agent is available to receive work.
-
-### Example
-
-```text
-Available for Cases
-```
-
-means:
-
-```text
-Agent can receive Cases
-```
-
-### Configuration
+Inside Queue:
 
 | Field | Value |
 |---------|---------|
-| Status Name | Available for Cases |
-| Service Channel | Cases |
+| Routing Type | Omni-Channel |
+| Routing Configuration | Case Routing |
 
-### Why It Is Required
-
-Omni-Channel only routes work to agents with an active status.
-
----
-
-## 5. Queue
-
-### Purpose
-
-A queue acts as a holding area for Cases before they are assigned to agents.
-
-### Queues Created
-
-#### Tier 1 Support
-
-Handles:
-
-- Password resets
-- Billing questions
-- General support inquiries
-
-#### Engineering Escalations
-
-Handles:
-
-- Product defects
-- Bugs
-- Technical escalations
-
-### Configuration
-
-| Field | Value |
-|---------|---------|
-| Queue Name | Tier 1 Support |
-| Supported Object | Case |
-| Members | Support Users |
-
-Repeat the same process for:
+### Relationship
 
 ```text
-Engineering Escalations
+Queue
+  ↓
+Routing Configuration
 ```
 
 ### Why It Is Required
 
-Case Assignment Rules route Cases to queues. Without queues there is no routing destination.
+Without this connection:
+
+```text
+Case
+ ↓
+Queue
+```
+
+The Case remains in the queue and is never delivered to an agent.
 
 ---
 
-## 6. Routing Configuration
+## 3. Routing Configuration → Omni-Channel
 
 ### Purpose
 
-Defines how Omni-Channel distributes work among agents.
+Defines how Omni-Channel selects an agent.
 
 ### Example
 
@@ -238,7 +154,17 @@ Agent B:
 2/10 Capacity Used
 ```
 
-Using the **Most Available** routing model, Salesforce routes the next Case to Agent B.
+Routing Model:
+
+```text
+Most Available
+```
+
+Result:
+
+```text
+Agent B receives the Case
+```
 
 ### Configuration
 
@@ -249,69 +175,162 @@ Using the **Most Available** routing model, Salesforce routes the next Case to A
 | Routing Model | Most Available |
 | Units of Capacity | 1 |
 
-### Why It Is Required
-
-Omni-Channel requires routing logic to determine which agent should receive work.
-
 ---
 
-## 7. Case Assignment Rule
+## 4. Service Channel → Salesforce Object
 
 ### Purpose
 
-Automatically assigns Cases to the correct queue.
+Tells Omni-Channel which object can be routed.
 
-### Rule Name
+### Configuration
 
-```text
-Support Routing
-```
+| Field | Value |
+|---------|---------|
+| Service Channel Name | Cases |
+| Salesforce Object | Case |
 
-### Rule Entry 1
-
-#### Criteria
-
-```text
-Issue_Category__c = Bug
-```
-
-#### Action
+### Relationship
 
 ```text
-Assign to Engineering Escalations Queue
-```
-
-#### Order
-
-```text
-1
-```
-
----
-
-### Rule Entry 2
-
-#### Criteria
-
-```text
-All Other Cases
-```
-
-#### Action
-
-```text
-Assign to Tier 1 Support Queue
-```
-
-#### Order
-
-```text
-2
+Service Channel
+      ↓
+Case Object
 ```
 
 ### Why It Is Required
 
-Ensures Cases are automatically categorized and routed without manual intervention.
+Without a Service Channel, Omni-Channel cannot recognize Cases as routeable work.
+
+---
+
+## 5. Presence Status → Service Channel
+
+### Purpose
+
+Defines what type of work an agent can receive.
+
+### Example
+
+Status:
+
+```text
+Available for Cases
+```
+
+Associated Channel:
+
+```text
+Cases
+```
+
+### Relationship
+
+```text
+Presence Status
+        ↓
+Service Channel
+```
+
+### Why It Is Required
+
+This tells Salesforce:
+
+```text
+User can receive Cases
+```
+
+---
+
+## 6. Presence Configuration → Presence Status
+
+### Purpose
+
+Defines workload capacity for agents.
+
+### Example
+
+```text
+Capacity = 10
+```
+
+Each Case:
+
+```text
+Consumes 1 Unit
+```
+
+Agent can handle:
+
+```text
+10 Cases
+```
+
+### Relationship
+
+```text
+Presence Status
+        ↓
+Presence Configuration
+```
+
+### Why It Is Required
+
+Prevents agents from receiving more work than they can handle.
+
+---
+
+## 7. User → Presence Status
+
+### Purpose
+
+Allows agents to indicate whether they are available.
+
+### Example
+
+User selects:
+
+```text
+Available for Cases
+```
+
+### Relationship
+
+```text
+User
+ ↓
+Presence Status
+```
+
+### Why It Is Required
+
+Only available agents receive work.
+
+---
+
+# Complete Routing Flow
+
+```text
+Case Created
+      │
+      ▼
+Case Assignment Rule
+      │
+      ▼
+Queue
+      │
+      ▼
+Routing Configuration
+      │
+      ▼
+Omni-Channel
+      │
+      ▼
+Available Agent
+      │
+      ▼
+Case Delivered
+```
 
 ---
 
@@ -319,46 +338,54 @@ Ensures Cases are automatically categorized and routed without manual interventi
 
 ## Step 1: Enable Omni-Channel
 
-Navigation:
+### Navigation
 
 ```text
 Setup → Omni-Channel Settings
 ```
 
-Enable:
+### Configuration
 
-```text
-Enable Omni-Channel
-```
+| Field | Value |
+|---------|---------|
+| Enable Omni-Channel | True |
+
+### Why
+
+Activates Salesforce's routing engine.
 
 ---
 
 ## Step 2: Create Service Channel
 
-Navigation:
+### Navigation
 
 ```text
 Setup → Service Channels → New
 ```
 
-Configuration:
+### Configuration
 
 | Field | Value |
 |---------|---------|
 | Service Channel Name | Cases |
 | Salesforce Object | Case |
 
+### Why
+
+Makes Cases available for Omni-Channel routing.
+
 ---
 
 ## Step 3: Create Presence Configuration
 
-Navigation:
+### Navigation
 
 ```text
 Setup → Presence Configurations → New
 ```
 
-Configuration:
+### Configuration
 
 | Field | Value |
 |---------|---------|
@@ -366,28 +393,36 @@ Configuration:
 | Capacity | 10 |
 | Routing Model | Most Available |
 
+### Why
+
+Defines agent workload limits.
+
 ---
 
 ## Step 4: Create Presence Status
 
-Navigation:
+### Navigation
 
 ```text
 Setup → Presence Statuses → New
 ```
 
-Configuration:
+### Configuration
 
 | Field | Value |
 |---------|---------|
 | Status Name | Available for Cases |
 | Service Channel | Cases |
 
+### Why
+
+Allows agents to receive Case work.
+
 ---
 
 ## Step 5: Create Queues
 
-Navigation:
+### Navigation
 
 ```text
 Setup → Queues → New
@@ -407,19 +442,21 @@ Setup → Queues → New
 | Queue Name | Engineering Escalations |
 | Supported Object | Case |
 
-Add support users as members.
+### Why
+
+Acts as the routing destination for Cases.
 
 ---
 
 ## Step 6: Create Routing Configuration
 
-Navigation:
+### Navigation
 
 ```text
 Setup → Routing Configurations → New
 ```
 
-Configuration:
+### Configuration
 
 | Field | Value |
 |---------|---------|
@@ -428,58 +465,84 @@ Configuration:
 | Routing Model | Most Available |
 | Units of Capacity | 1 |
 
+### Why
+
+Determines how Omni-Channel selects agents.
+
 ---
 
-## Step 7: Configure Omni-Channel Routing on Queues
+## Step 7: Connect Queues to Omni-Channel
 
-For both queues:
+Open each queue and configure:
 
 | Field | Value |
 |---------|---------|
 | Routing Type | Omni-Channel |
 | Routing Configuration | Case Routing |
 
+### Why
+
+Enables Cases in the queue to be routed to agents.
+
 ---
 
 ## Step 8: Create Case Assignment Rule
 
-Navigation:
+### Navigation
 
 ```text
 Setup → Case Assignment Rules
 ```
 
-Create:
+### Rule Name
 
 ```text
 Support Routing
 ```
 
-Activate the rule and add both rule entries.
+### Rule Entry 1
+
+| Field | Value |
+|---------|---------|
+| Criteria | Issue_Category__c = Bug |
+| Assign To | Engineering Escalations Queue |
+| Order | 1 |
+
+### Rule Entry 2
+
+| Field | Value |
+|---------|---------|
+| Criteria | All Other Cases |
+| Assign To | Tier 1 Support Queue |
+| Order | 2 |
+
+### Why
+
+Automatically sends Cases to the correct queue.
 
 ---
 
 ## Step 9: Add Omni-Channel Utility
 
-Navigation:
+### Navigation
 
 ```text
 Setup → App Manager
+→ Service Console
+→ Edit
+→ Utility Bar
+→ Add Omni-Channel
 ```
 
-Edit Service Console App:
+### Why
 
-```text
-Utility Bar → Add Utility Item → Omni-Channel
-```
-
-Save changes.
+Allows agents to receive and accept incoming work.
 
 ---
 
-# Testing
+# Test Scenario
 
-## Test Scenario 1
+## Case 1
 
 ### Input
 
@@ -502,12 +565,12 @@ Accept Work
 
 ---
 
-## Test Scenario 2
+## Case 2
 
 ### Input
 
 ```text
-Subject: Password Reset Help
+Subject: Password Reset Request
 Issue Category: Access
 ```
 
@@ -532,8 +595,9 @@ This implementation demonstrates:
 - Automated Case Assignment
 - Queue-Based Routing
 - Omni-Channel Work Distribution
+- Capacity-Based Agent Assignment
 - Real-Time Agent Notifications
-- Capacity-Based Workload Management
-- Improved Support Response Times
+- Faster Support Response Times
+- Improved Agent Productivity
 
-The solution eliminates manual case assignment and ensures work is delivered to the most appropriate available support agent.
+The solution ensures that every Case reaches the most appropriate available support agent with minimal manual effort.
